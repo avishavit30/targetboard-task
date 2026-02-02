@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "subagentStop": [
+      {
+        "command": ".cursor/hooks/ralph-loop.sh",
+        "matcher": "dbt-developer"
+      }
+    ]
+  }
+}

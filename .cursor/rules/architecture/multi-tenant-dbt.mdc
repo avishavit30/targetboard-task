@@ -1,0 +1,95 @@
+---
+description: Multi-tenant dbt patterns with vars and dynamic source switching
+alwaysApply: true
+---
+
+# Multi-Tenant dbt Architecture
+
+## Configuration via vars
+
+Use `var()` for client-specific configuration. Never hardcode client names in SQL.
+
+### dbt_project.yml Setup
+
+```yaml
+vars:
+  # Multi-tenant source system configuration
+  source_system: 'jira'
+  source_schema: 'targetboard_source_jira'
+  
+  # Field mappings (can vary by source system)
+  issue_key_field: 'key'
+  status_field: 'fields__status__name'
+  issue_type_field: 'fields__issuetype__name'
+  
+  # Default issue types to filter (can be overridden per client)
+  issue_types: ['Task', 'Epic', 'Story']
+```
+
+### Override per run
+
+```bash
+dbt run --vars '{"source_system": "monday", "source_schema": "stitch_monday"}'
+```
+
+## Dynamic Source Switching
+
+### Pattern: Source Selector Macro
+
+```sql
+{% macro get_source_config() %}
+  {% set source_system = var('source_system', 'jira') %}
+  
+  {% if source_system == 'jira' %}
+    {% set config = {
+      'schema': var('source_schema', 'stitch_jira'),
+      'issues_table': 'issues',
+      'key_column': 'key',
+      'status_column': 'fields__status__name'
+    } %}
+  {% elif source_system == 'monday' %}
+    {% set config = {
+      'schema': var('source_schema', 'stitch_monday'),
+      'issues_table': 'items',
+      'key_column': 'item_id',
+      'status_column': 'status_label'
+    } %}
+  {% endif %}
+  
+  {{ return(config) }}
+{% endmacro %}
+```
+
+### Usage in Models
+
+Note: dbt sources are defined in YAML (`sources.yml`), not dynamically. The `source()` function 
+takes `(source_name, table_name)`. For multi-tenant, define sources per client in YAML and switch 
+via profiles.yml targets, or use the pattern below with a source name var:
+
+```sql
+{% set src = get_source_config() %}
+{% set source_name = var('source_system', 'jira') %}
+
+select
+    {{ src.key_column }} as item_key,
+    {{ src.status_column }} as status
+from {{ source(source_name, src.issues_table) }}
+```
+
+The source name must match a source defined in your `sources.yml`. For true multi-tenant switching,
+define multiple sources and select via var, or use profiles.yml targets.
+
+## Schema per Client Pattern
+
+For true multi-tenancy, use target schema with client prefix:
+
+```yaml
+# profiles.yml
+targetboard:
+  target: client_a
+  outputs:
+    client_a:
+      schema: client_a_analytics
+    client_b:
+      schema: client_b_analytics
+```

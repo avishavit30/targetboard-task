@@ -1,0 +1,52 @@
+[sqlfluff]
+templater = dbt
+dialect = postgres
+# AM04: query produces unknown columns (dbt issue)
+# LT01: trailing whitespace
+# RF06: unnecessary quoted identifiers (needed for Stitch column names with __)
+# AM09: limit without order by (ok for testing)
+# ST06: column order (conflicts with business requirements for column ordering)
+exclude_rules = AM04,LT01,RF06,AM09,ST06
+max_line_length = 120
+
+[sqlfluff:templater:dbt]
+project_dir = .
+profiles_dir = .
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+
+[sqlfluff:layout:type:comma]
+line_position = trailing
+
+# Major clauses on new lines
+[sqlfluff:layout:type:select_clause]
+line_position = alone:strict
+
+[sqlfluff:layout:type:from_clause]
+line_position = alone:strict
+
+[sqlfluff:layout:type:where_clause]
+line_position = alone:strict
+
+[sqlfluff:layout:type:join_clause]
+line_position = alone:strict
+
+[sqlfluff:layout:type:groupby_clause]
+line_position = alone:strict
+
+[sqlfluff:layout:type:orderby_clause]
+line_position = alone:strict
+
+[sqlfluff:layout:type:having_clause]
+line_position = alone:strict
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+capitalisation_policy = lower

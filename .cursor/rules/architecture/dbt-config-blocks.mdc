@@ -1,0 +1,68 @@
+---
+description: Config block patterns for dbt models with PostgreSQL
+globs: models/**/*.sql
+alwaysApply: false
+---
+
+# dbt Config Blocks (PostgreSQL)
+
+## Materialization by Layer
+
+| Layer | Default | Options |
+|-------|---------|---------|
+| Staging | `view` | `view`, `ephemeral` |
+| Intermediate | `ephemeral` | `ephemeral`, `view` |
+| Marts | `table` | `table`, `incremental` |
+
+## Basic Config
+
+```sql
+{{ config(
+    materialized='table'
+) }}
+```
+
+## PostgreSQL Indexes
+
+For `table` or `incremental` models:
+
+```sql
+{{ config(
+    materialized='table',
+    indexes=[
+        {'columns': ['issue_key'], 'unique': true},
+        {'columns': ['status'], 'type': 'hash'},
+        {'columns': ['created_at']}
+    ]
+) }}
+```
+
+Index types: `btree` (default), `hash`, `gin`, `gist`
+
+## Incremental Models
+
+```sql
+{{ config(
+    materialized='incremental',
+    unique_key='issue_key',
+    incremental_strategy='delete+insert'
+) }}
+
+select ...
+from {{ ref('stg_issues') }}
+{% if is_incremental() %}
+where updated_at > (select max(updated_at) from {{ this }})
+{% endif %}
+```
+
+Strategies: `append`, `delete+insert` (default with unique_key), `merge`
+
+## Config Hierarchy (precedence)
+
+1. `{{ config() }}` in SQL file (highest)
+2. `config:` in YAML properties
+3. `dbt_project.yml` (lowest)
+
+## Placement
+
+Config block at the **very top** of the file, before any CTEs.

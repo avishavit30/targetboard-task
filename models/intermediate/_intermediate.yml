@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: int_issue_status_history
+    description: >
+      Intermediate model for tracking issue status transitions over time.
+      Combines stg_issues, stg_changelogs, and stg_changelog_items to create
+      a complete status history for each issue. Used by the get_status_as_of 
+      macro to determine issue status "as of" a specific date.
+      Grain: one row per status change event per issue.
+    columns:
+      - name: issue_id
+        description: "Issue identifier. In this table: foreign key to stg_issues.id."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_issues')
+                field: id
+      - name: issue_key
+        description: "Human-readable issue key (e.g., TB-123). Denormalized from stg_issues for convenience."
+        data_tests:
+          - not_null
+      - name: status_changed_at
+        description: "Timestamp when the status change occurred in Jira."
+        data_tests:
+          - not_null
+      - name: from_status
+        description: "Status value before the change. May be NULL for the first status transition after issue creation."
+      - name: to_status
+        description: "The new status value after the transition. Never NULL."
+        data_tests:
+          - not_null

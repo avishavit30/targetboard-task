@@ -1,0 +1,31 @@
+---
+description: TargetBoard home assignment context and philosophy
+alwaysApply: true
+---
+
+# TargetBoard Assignment Context
+
+## The Assignment
+
+Home assignment for Senior BI Developer position at TargetBoard. Hiring manager: Lior Ash (CTO).
+
+## Core Philosophy
+
+- **Efficiency**: Code must be highly efficient and operational
+- **Audit-ready**: Every model should be production-quality and explainable
+- **Speed-to-value**: Deliver working solutions quickly
+
+## Technical Stack
+
+| Component | Technology |
+|-----------|------------|
+| Transformation | dbt Core |
+| Database | PostgreSQL (NOT Snowflake/BigQuery) |
+| Architecture | Multi-tenant (single project, multiple customers) |
+
+## Key Constraints
+
+1. **PostgreSQL syntax only** - No Snowflake/BigQuery functions
+2. **Use `vars`** - Client-specific logic via `dbt_project.yml`, never hardcoded
+3. **Defensive SQL** - Handle NULLs, case sensitivity, edge cases
+4. **Jinja macros** - Abstract complex/reusable logic into macros

@@ -1,0 +1,62 @@
+---
+description: YAML documentation standards for dbt models
+globs: models/**/*.sql,models/**/*.yml
+alwaysApply: false
+---
+
+# dbt Documentation Standards
+
+Every model must be documented in a YAML file.
+
+## Required Structure
+
+```yaml
+version: 2
+
+models:
+  - name: stg_issues
+    description: "Staged Jira issues with standardized column names."
+    columns:
+      - name: issue_key
+        description: "Unique identifier for the issue (e.g., PROJ-123)."
+```
+
+## YAML File Naming
+
+| Folder | File Pattern |
+|--------|--------------|
+| `models/staging/` | `_staging.yml` |
+| `models/intermediate/` | `_intermediate.yml` |
+| `models/marts/` | `_marts.yml` |
+| Sources | `__sources.yml` |
+
+## Required Fields
+
+1. **Model name**: Must match SQL filename (without `.sql`)
+2. **Model description**: What the model does, not just its name
+3. **Column definitions**: All output columns documented
+4. **Column descriptions**: Meaningful, not generic
+
+## Description Quality
+
+```yaml
+# ❌ BAD: Generic
+- name: created_at
+  description: "A date"
+
+# ✅ GOOD: Specific
+- name: created_at
+  description: "Timestamp when the issue was created in Jira, stored in UTC."
+```
+
+## Quoting Rule
+
+Descriptions containing colons MUST be quoted:
+
+```yaml
+# ✅ Correct
+description: "Status values: Open, Closed"
+
+# ❌ Wrong - breaks YAML
+description: Status values: Open, Closed
+```

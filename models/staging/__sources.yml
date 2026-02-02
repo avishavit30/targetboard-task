@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: jira
+    description: >
+      Raw Jira data extracted via Stitch Data.
+      Note: database and schema are configured per-client via profiles.yml targets.
+      For multi-tenant deployments, create separate profiles.yml targets per client.
+    schema: "{{ var('source_schema', 'targetboard_source_jira') }}"
+    tables:
+      - name: issues
+        description: Jira issues table containing all issue data
+        columns:
+          - name: id
+            description: Unique issue ID
+          - name: key
+            description: Issue key (e.g., PROJ-123)
+          - name: "fields__summary"
+            description: Issue summary/title
+          - name: "fields__issuetype__name"
+            description: Issue type (Task, Epic, Story, Bug, etc.)
+          - name: "fields__status__name"
+            description: Current status of the issue
+          - name: "fields__created"
+            description: When the issue was created
+
+      - name: changelogs
+        description: Changelog entries for issues
+        columns:
+          - name: id
+            description: Changelog entry ID
+          - name: issueId
+            description: Foreign key to issues table
+          - name: created
+            description: When the change was made
+
+      - name: changelogs__items
+        description: Individual field changes within a changelog entry
+        columns:
+          - name: _sdc_source_key_id
+            description: Foreign key to changelogs.id (Stitch replication key)
+          - name: field
+            description: Name of the field that changed (e.g., 'status', 'assignee')
+          - name: fromString
+            description: Previous value (human readable)
+          - name: toString
+            description: New value (human readable)

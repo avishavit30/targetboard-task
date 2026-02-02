@@ -1,0 +1,98 @@
+---
+description: Considerations for Stitch Data Jira extracts
+globs: "models/staging/**/*.sql,models/intermediate/**/*.sql"
+alwaysApply: false
+---
+
+# Stitch Data Jira Extract Considerations
+
+## Key Tables & Relationships
+
+```
+issues (id)
+    │
+    └──< changelogs (issueId → issues.id)
+              │
+              └──< changelogs__items (_sdc_source_key_id → changelogs.id)
+```
+
+## Stitch-Specific Column Naming
+
+Stitch uses special prefixes for metadata and nested structures:
+
+| Prefix | Meaning | Example |
+|--------|---------|---------|
+| `_sdc_*` | Stitch metadata | `_sdc_source_key_id`, `_sdc_level_0_id` |
+| `fields__*` | Nested Jira fields | `fields__summary`, `fields__status__name` |
+
+Always quote double-underscore columns: `"fields__summary"`
+
+## Deleted Issues Cannot Be Detected
+
+**Critical**: When an issue is hard-deleted in Jira, the record remains in your destination forever.
+
+- Jira's API does not expose deleted issues
+- Stitch uses Key-based Incremental replication - no value to check = no deletion detected
+
+**Workaround**: Create a "Deleted" status in Jira. Before deleting issues:
+1. Apply the "Deleted" status
+2. Wait for Stitch to sync
+3. Then delete the issue
+4. Query with `WHERE "fields__status__name" is distinct from 'Deleted'`
+
+## Changelog Limitation
+
+**Only the 100 most recent changelogs per issue are available** via the API.
+
+For issues with >100 changes, early history is lost. Document this limitation in your models.
+
+## Unsupported Date Formats
+
+Records with dates from these locales are **skipped during replication**:
+- Hungarian, Italian, Japanese, Korean, Polish, Thai, Turkish
+- Chinese (Simplified/Traditional), Portuguese (Brazil/Portugal), Vietnamese
+
+If you have international users, some records may be missing.
+
+## Join Considerations
+
+### changelogs__items to changelogs
+
+Not all `changelogs__items` have matching `changelogs` when you filter issues:
+
+```sql
+-- stg_changelog_items may have orphans when stg_changelogs
+-- filters to specific issue types (e.g., Task/Epic/Story only)
+-- Use INNER JOIN in intermediate models to filter them
+```
+
+### issues to changelogs
+
+~1% of changelogs may be orphaned (issues deleted but changelogs remain):
+
+```sql
+-- Use INNER JOIN to filter orphaned changelogs
+inner join stg_issues on changelogs.issue_id = stg_issues.id
+```
+
+## Recommended Filters
+
+For clean data, apply these filters in staging:
+
+```sql
+-- Filter issue types in stg_issues
+where true
+    and "fields__issuetype__name" in ('Task', 'Epic', 'Story')
+
+-- Filter to status changes only in stg_changelog_items
+where true
+    and field = 'status'
+```
+
+## Primary Keys
+
+| Table | Primary Key |
+|-------|-------------|
+| issues | `id` |
+| changelogs | `id` |
+| changelogs__items | `_sdc_source_key_id` + `_sdc_level_0_id` (composite) |

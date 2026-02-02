@@ -1,0 +1,53 @@
+---
+description: Naming conventions for dbt models, files, and columns
+globs: models/**/*.sql,models/**/*.yml
+alwaysApply: false
+---
+
+# dbt Naming Contracts
+
+## Model Prefixes
+
+| Layer | Prefix | Folder | Example |
+|-------|--------|--------|---------|
+| Staging | `stg_` | `models/staging/` | `stg_issues.sql` |
+| Intermediate | `int_` | `models/intermediate/` | `int_issue_status_history.sql` |
+| Facts | `fct_` | `models/marts/` | `fct_daily_status.sql` |
+| Dimensions | `dim_` | `models/marts/` | `dim_users.sql` |
+| Marts (general) | none | `models/marts/` | `issue_status_as_of.sql` |
+
+## Conventions
+
+- **snake_case** for all names (models, columns, macros)
+- **Pluralize entities**: `stg_issues` not `stg_issue`
+- **Descriptive intermediate**: `int_issue_status_history` not `int_issues_v2`
+
+## YAML Files
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Model docs | `_<folder>.yml` | `_staging.yml` |
+| Sources | `__sources.yml` | `__sources.yml` |
+
+## Column Naming
+
+```sql
+-- ✅ GOOD: Clear, consistent
+issue_key, status, created_at, updated_at
+
+-- ❌ BAD: Inconsistent, unclear
+issueKey, Status, createdDate, update_ts
+```
+
+## Anti-Patterns
+
+```
+❌ stg_jira_issues.sql     -- Don't include source system in staging name
+✅ stg_issues.sql          -- Source system defined in __sources.yml
+
+❌ int_temp_issues.sql     -- No temp/v2/final suffixes
+✅ int_issue_transitions.sql
+
+❌ final_report.sql        -- No generic names
+✅ issue_status_as_of.sql  -- Descriptive purpose
+```

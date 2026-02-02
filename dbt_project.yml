@@ -1,0 +1,36 @@
+name: 'targetboard'
+version: '1.0.0'
+config-version: 2
+
+# This must match the name in your profiles.yml
+profile: 'targetboard_task'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Multi-tenant source system configuration
+  source_system: 'jira'
+  source_schema: 'targetboard_source_jira'
+  
+  # Field mappings (can vary by source system)
+  issue_key_field: 'key'
+  status_field: 'fields__status__name'
+  issue_type_field: 'fields__issuetype__name'
+  
+  # Default issue types to filter (can be overridden per client)
+  issue_types: ['Task', 'Epic', 'Story']
+
+models:
+  targetboard:
+    # Configures all models in this project
+    +materialized: view

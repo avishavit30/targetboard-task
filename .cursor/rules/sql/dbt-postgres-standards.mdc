@@ -1,0 +1,78 @@
+---
+description: dbt best practices with PostgreSQL
+globs: "**/*.sql"
+alwaysApply: false
+---
+
+# dbt + PostgreSQL Standards
+
+## SQL Style
+
+Follow `.sqlfluff` configuration. Run `sqlfluff fix <file>` to auto-format.
+
+## WHERE Clause Pattern
+
+Always use `WHERE TRUE` followed by `AND` for filters. This improves readability and makes it easy to add/remove conditions:
+
+```sql
+-- ✅ GOOD
+select *
+from source
+where true
+    and status = 'active'
+    and created_at >= '2024-01-01'
+
+-- ❌ BAD
+select *
+from source
+where status = 'active'
+    and created_at >= '2024-01-01'
+```
+
+## No Subqueries
+
+Avoid subqueries. Use CTEs or JOINs instead:
+
+```sql
+-- ❌ BAD: Subquery
+select *
+from orders
+where customer_id in (
+    select id from customers where status = 'active'
+)
+
+-- ❌ BAD: EXISTS subquery
+select *
+from orders o
+where exists (
+    select 1 from customers c where c.id = o.customer_id
+)
+
+-- ✅ GOOD: CTE + JOIN
+with active_customers as (
+    select id
+    from customers
+    where true
+        and status = 'active'
+)
+
+select o.*
+from orders o
+inner join active_customers ac
+    on o.customer_id = ac.id
+```
+
+## Naming Conventions
+
+| Layer | Prefix | Example |
+|-------|--------|---------|
+| Staging | `stg_` | `stg_issues` |
+| Intermediate | `int_` | `int_issue_status_history` |
+| Marts | none | `issue_status_as_of` |
+
+## PostgreSQL-Specific
+
+- Use `initcap()` for title case
+- Quote column names with double underscores: `"fields__summary"`
+- Use `::` for type casting: `created::date`
+- Use `coalesce()` for null handling

@@ -1,0 +1,94 @@
+---
+description: Keep implementations generic and reusable across data sources
+globs: "macros/**/*.sql"
+alwaysApply: false
+---
+
+# Generic & Reusable Code
+
+## Principle
+
+Write macros and models that can work with ANY source system (Jira, ServiceNow, Salesforce, etc.), not just the current one.
+
+## Macro Design
+
+### Parameterize Everything
+
+Don't hardcode table/column names. Accept them as parameters:
+
+```sql
+-- ❌ BAD: Hardcoded for Jira
+{% macro get_status_history() %}
+select issue_key, status from jira_issues
+{% endmacro %}
+
+-- ✅ GOOD: Generic with parameters
+{% macro get_status_history(
+    items_relation,
+    item_key_column='item_key',
+    status_column='status'
+) %}
+select
+    {{ item_key_column }} as item_key,
+    {{ status_column }} as status
+from {{ items_relation }}
+{% endmacro %}
+```
+
+### Provide Sensible Defaults
+
+Parameters should have defaults that work for common cases:
+
+```sql
+{% macro get_status_as_of(
+    items_relation,
+    status_history_relation,
+    item_key_column='item_key',        -- Generic default
+    history_key_column='item_key',     -- Match items by default
+    filter_date=none,                  -- Optional filter
+    output_cte_name='status_result'    -- Customizable output
+) %}
+```
+
+### Document Source-Agnostic Usage
+
+Include examples for multiple source systems in docstrings:
+
+```sql
+{#
+    Works with any source system:
+    
+    -- Jira
+    {{ get_status_as_of(ref('stg_issues'), ref('int_issue_history'), 'issue_key') }}
+    
+    -- ServiceNow
+    {{ get_status_as_of(ref('stg_incidents'), ref('int_incident_history'), 'incident_id') }}
+    
+    -- Salesforce
+    {{ get_status_as_of(ref('stg_cases'), ref('int_case_history'), 'case_number') }}
+#}
+```
+
+## Model Design
+
+### Separate Source-Specific from Generic
+
+- **Staging models**: Source-specific (handle raw column names, data cleaning)
+- **Intermediate/Mart models**: Use generic macros, not source-specific logic
+
+### Avoid Source-Specific Comments
+
+```sql
+-- ❌ BAD: References specific source
+-- This model handles Jira issue status tracking
+
+-- ✅ GOOD: Generic description
+-- This model tracks item status transitions over time
+```
+
+## Benefits
+
+1. **Reusability**: Same logic works across sources
+2. **Maintainability**: Fix once, apply everywhere
+3. **Testing**: Test the macro, not each source implementation
+4. **Onboarding**: New sources follow the same pattern

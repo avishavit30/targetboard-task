@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: issue_status_as_of
+    description: >
+      Mart model for querying Jira issue status at a specific date.
+      Uses the generic get_status_as_of macro (which supports multiple source systems).
+      Configure the target date using dbt vars:
+        dbt run --select issue_status_as_of --vars '{"as_of_date": "''2024-03-01''::date"}'
+      If no date is provided, defaults to current date.
+      Grain: one row per issue.
+    columns:
+      - name: issue_key
+        description: "Human-readable issue key (e.g., TB-123). In this table: primary key."
+        data_tests:
+          - unique
+          - not_null
+      - name: summary
+        description: "Issue summary/title with title case applied. Never NULL (coalesced to empty string at source)."
+        data_tests:
+          - not_null
+      - name: status_as_of
+        description: >
+          The status of the issue as of the configured date.
+          Logic: (1) Most recent status change on/before date,
+          (2) Initial status if no changes before date,
+          (3) Current status if no change history exists.
+        data_tests:
+          - not_null
+      - name: as_of_date
+        description: "The date used for the 'as of' query. Configured via var('as_of_date'), defaults to current_date."
+        data_tests:
+          - not_null

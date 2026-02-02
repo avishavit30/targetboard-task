@@ -1,0 +1,82 @@
+version: 2
+
+models:
+  - name: stg_issues
+    description: >
+      Staging model for issues. Filters to Task, Epic, and Story issue types only.
+      Applies title case (initcap) to summary field.
+    columns:
+      - name: id
+        description: "Unique issue identifier. In this table: primary key, internal database ID."
+        data_tests:
+          - unique
+          - not_null
+      - name: key
+        description: "Human-readable issue key (e.g., TB-123). Unique business identifier."
+        data_tests:
+          - unique
+          - not_null
+      - name: issue_summary
+        description: "Issue summary/title with title case applied via initcap(). Coalesced to empty string if NULL."
+        data_tests:
+          - not_null
+      - name: issue_type
+        description: "Issue type - filtered to only Task, Epic, or Story."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Task', 'Epic', 'Story']
+      - name: status
+        description: "Current status of the issue in Jira (e.g., Open, In Progress, Done)."
+        data_tests:
+          - not_null
+      - name: created
+        description: "Timestamp when the issue was created in Jira."
+        data_tests:
+          - not_null
+
+  - name: stg_changelogs
+    description: >
+      Staging model for changelog entries. Filters to only include changelogs
+      for issues of configured issue types (Task, Epic, Story by default).
+    columns:
+      - name: changelog_id
+        description: "Unique changelog entry identifier. In this table: primary key."
+        data_tests:
+          - unique
+          - not_null
+      - name: issue_id
+        description: "Foreign key to stg_issues.id. Links this changelog entry to its parent issue."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_issues')
+                field: id
+      - name: created
+        description: "Timestamp when the change was made in Jira."
+        data_tests:
+          - not_null
+
+  - name: stg_changelog_items
+    description: >
+      Staging model for changelog items. Filters to status changes only (field = 'status').
+      Used to track issue status transitions over time.
+      Note: Not all changelog_items have matching changelogs in stg_changelogs because
+      stg_changelogs filters to only Task/Epic/Story issues. Orphans are filtered by
+      the inner join in int_issue_status_history.
+    columns:
+      - name: changelog_id
+        description: >
+          References changelogs.id but no relationship test defined because stg_changelog_items
+          includes all status changes while stg_changelogs is filtered to Task/Epic/Story only.
+          The inner join in int_issue_status_history handles the filtering.
+        data_tests:
+          - not_null
+      - name: from_status
+        description: "Previous status value before the change. May be NULL for newly created issues."
+      - name: to_status
+        description: "New status value after the change."
+        data_tests:
+          - not_null

@@ -1,0 +1,45 @@
+---
+description: DAG architecture and dependency rules for dbt models
+globs: models/**/*.sql,models/**/*.yml
+alwaysApply: false
+---
+
+# dbt DAG Best Practices
+
+## Layered Architecture
+
+```
+source() → stg_* → int_* → marts
+```
+
+## Source Access Rules
+
+| Model Layer | Can Use `source()` | Can Use `ref()` |
+|-------------|-------------------|-----------------|
+| Staging (`stg_*`) | Yes | No (only sources) |
+| Intermediate (`int_*`) | No | Yes (staging/intermediate) |
+| Marts | No | Yes (staging/intermediate) |
+
+## Examples
+
+```sql
+-- ✅ GOOD: Staging uses source()
+-- models/staging/stg_issues.sql
+select * from {{ source('jira', 'issues') }}
+
+-- ✅ GOOD: Intermediate refs staging
+-- models/intermediate/int_issue_history.sql
+select * from {{ ref('stg_issues') }}
+
+-- ❌ BAD: Mart directly using source()
+-- models/marts/issue_report.sql
+select * from {{ source('jira', 'issues') }}  -- Should ref staging!
+```
+
+## Dependency Guidelines
+
+- **No skipping layers** for complex transformations
+- **Fan-out limit**: A model shouldn't have >10 direct dependents
+- **Staging is the boundary**: All raw data cleaning happens here
+- **Intermediate consolidates**: Business logic and joins
+- **Marts expose**: Final, consumer-ready data

@@ -1,0 +1,63 @@
+---
+description: Required tests for dbt models
+globs: models/**/*.sql,models/**/*.yml
+alwaysApply: false
+---
+
+# dbt Testing Requirements
+
+Every model must have appropriate tests defined in its YAML documentation.
+
+## Required Tests by Column Type
+
+### Primary Keys
+
+```yaml
+- name: issue_key
+  data_tests:
+    - unique
+    - not_null
+```
+
+### Foreign Keys
+
+```yaml
+- name: project_id
+  data_tests:
+    - not_null
+    - relationships:
+        to: ref('stg_projects')
+        field: project_id
+```
+
+### Status/Enum Columns
+
+```yaml
+- name: status
+  data_tests:
+    - accepted_values:
+        values: ['Open', 'In Progress', 'Done', 'Closed']
+```
+
+## Minimum Tests by Layer
+
+| Layer | Required |
+|-------|----------|
+| Staging | `unique` + `not_null` on primary key |
+| Intermediate | Primary key tests + `not_null` on join keys |
+| Marts | All above + `accepted_values` for enums |
+
+## Anti-Patterns
+
+```yaml
+# ❌ BAD: Primary key without tests
+- name: issue_id
+  description: "Primary key"
+
+# ✅ GOOD: Primary key with tests
+- name: issue_id
+  description: "Primary key"
+  data_tests:
+    - unique
+    - not_null
+```

@@ -1,0 +1,95 @@
+---
+description: Defensive PostgreSQL SQL patterns for resilient dbt models
+alwaysApply: true
+---
+
+# Defensive PostgreSQL SQL
+
+## NULL Handling
+
+Always handle NULLs explicitly. Never assume columns have values.
+
+```sql
+-- ❌ BAD: NULL comparison fails silently
+where status != 'Closed'
+
+-- ✅ GOOD: Explicit NULL handling
+where true
+    and status is distinct from 'Closed'
+
+-- ✅ GOOD: coalesce for defaults
+select coalesce(status, 'Unknown') as status
+```
+
+## Column Quoting
+
+PostgreSQL is case-sensitive for quoted identifiers. Quote columns with special characters:
+
+```sql
+-- ❌ BAD: Will fail or match wrong column
+select fields__status__name
+
+-- ✅ GOOD: Quoted identifier
+select "fields__status__name"
+```
+
+## Type Casting (PostgreSQL Syntax)
+
+```sql
+-- ✅ PostgreSQL casting
+id::text
+created_at::date
+value::numeric
+
+-- ❌ Wrong: Snowflake/BigQuery style
+to_varchar(id)
+date(created_at)
+```
+
+## Date Differences (PostgreSQL)
+
+```sql
+-- ❌ Wrong: datediff is Snowflake/Redshift
+datediff('day', start_date, end_date)
+
+-- ✅ PostgreSQL: Subtract dates directly (returns integer days)
+end_date::date - start_date::date
+
+-- ✅ PostgreSQL: EXTRACT for precision
+extract(epoch from end_timestamp - start_timestamp) / 86400.0
+```
+
+## Safe Division
+
+```sql
+-- ❌ BAD: Division by zero error
+revenue / count
+
+-- ✅ GOOD: nullif prevents division by zero
+revenue / nullif(count, 0)
+```
+
+## Index Recommendations
+
+For large tables, suggest indexes in post-hooks:
+
+```sql
+{{
+    config(
+        materialized='table',
+        post_hook=[
+            "create index if not exists idx_{{ this.name }}_item_key on {{ this }} (item_key)",
+            "create index if not exists idx_{{ this.name }}_as_of_date on {{ this }} (as_of_date)"
+        ]
+    )
+}}
+```
+
+## JSONB Extraction (if applicable)
+
+```sql
+-- Extract from JSONB
+raw_json->>'field_name'              -- as text
+(raw_json->>'numeric_field')::int    -- cast after extraction
+raw_json->'nested'->'field'          -- nested access
+```
